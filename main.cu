@@ -108,35 +108,43 @@ __global__ void increase_contrast(Pixel* A, Pixel* B, size_t rows, size_t cols)
     const auto val_of_cell = [A, rows, cols](size_t i, size_t j) -> Pixel& {
       return A[i * cols + j];
     };
-    
-    int green = (int)(val_of_cell(i - 1, j).green) * -1 
-               + (int)(val_of_cell(i, j - 1).green) * -1 
-               + (int)(val_of_cell(i + 1, j).green) * -1 
-               + (int)(val_of_cell(i, j + 1).green) * -1 
-               + (int)(val_of_cell(i, j).green) * 5;
 
-    int red = (int)(val_of_cell(i - 1, j).red) * -1 
-               + (int)(val_of_cell(i, j - 1).red) * -1 
-               + (int)(val_of_cell(i + 1, j).red) * -1 
-               + (int)(val_of_cell(i, j + 1).red) * -1 
-               + (int)(val_of_cell(i, j).red) * 5; 
+    const auto normalise = [](int value) -> int {
+      if (value > 255)
+        return 255;
+      else if (value < 0)
+        return 0;
+      return value;
+    };
 
-    int blue = (int)(val_of_cell(i - 1, j).blue) * -1 
-               + (int)(val_of_cell(i, j - 1).blue) * -1 
-               + (int)(val_of_cell(i + 1, j).blue) * -1 
-               + (int)(val_of_cell(i, j + 1).blue) * -1 
-               + (int)(val_of_cell(i, j).blue) * 5; 
+    int green = static_cast<int>(val_of_cell(i - 1, j).green) * -1
+               + static_cast<int>(val_of_cell(i, j - 1).green) * -1
+               + static_cast<int>(val_of_cell(i + 1, j).green) * -1
+               + static_cast<int>(val_of_cell(i, j + 1).green) * -1
+               + static_cast<int>(val_of_cell(i, j).green) * 5;
 
-    int alpha = (int)(val_of_cell(i - 1, j).alpha) * -1 
-               + (int)(val_of_cell(i, j - 1).alpha) * -1 
-               + (int)(val_of_cell(i + 1, j).alpha) * -1 
-               + (int)(val_of_cell(i, j + 1).alpha) * -1 
-               + (int)(val_of_cell(i, j).alpha) * 5; 
-    
-    B[n].green = green > 255 ? 255 : green;
-    B[n].red = red > 255 ? 255 : red;
-    B[n].blue = blue > 255 ? 255 : blue;
-    B[n].alpha = alpha > 255 ? 255 : alpha;
+    int red = static_cast<int>(val_of_cell(i - 1, j).red) * -1
+               + static_cast<int>(val_of_cell(i, j - 1).red) * -1
+               + static_cast<int>(val_of_cell(i + 1, j).red) * -1
+               + static_cast<int>(val_of_cell(i, j + 1).red) * -1
+               + static_cast<int>(val_of_cell(i, j).red) * 5; 
+
+    int blue = static_cast<int>(val_of_cell(i - 1, j).blue) * -1
+               + static_cast<int>(val_of_cell(i, j - 1).blue) * -1
+               + static_cast<int>(val_of_cell(i + 1, j).blue) * -1
+               + static_cast<int>(val_of_cell(i, j + 1).blue) * -1
+               + static_cast<int>(val_of_cell(i, j).blue) * 5;
+
+    int alpha = static_cast<int>(val_of_cell(i - 1, j).alpha) * -1
+               + static_cast<int>(val_of_cell(i, j - 1).alpha) * -1
+               + static_cast<int>(val_of_cell(i + 1, j).alpha) * -1
+               + static_cast<int>(val_of_cell(i, j + 1).alpha) * -1
+               + static_cast<int>(val_of_cell(i, j).alpha) * 5;
+
+    B[n].green = normalise(green);
+    B[n].red = normalise(red);
+    B[n].blue = normalise(blue);
+    B[n].alpha = normalise(alpha);
   }
   else
   {
@@ -153,7 +161,7 @@ int main(int argc, char *argv[])
   }
   std::string name = argv[1];
 
-  auto img = readBMP(name);
+  auto img = readBMP("1.bmp");
 
   std::cout << "Img was read, data block size - " << img.data.size() << std::endl;
 
@@ -170,13 +178,14 @@ int main(int argc, char *argv[])
   Pixel* d_B = thrust::raw_pointer_cast(img.data.data());
 
   int threadsPerBlock = 1024;
-  int blocksPerGrid = (img.data.size() + threadsPerBlock - 1) / threadsPerBlock;
+  int blocksPerGrid = img.data.size() / threadsPerBlock;
   increase_contrast<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, img.info.height, img.info.width);
   cudaDeviceSynchronize();
 
-  std::cout << cudaGetLastError() << std::endl;;
+  std::cout << "Cuda exec result: " << cudaGetLastError() << std::endl;;
 
   std::cout << "Contrast was increased" << std::endl;
 
-  writeBMP("./output.bmp", img);
+  std::string result_file = "output_" + name;
+  writeBMP(result_file, img);
 }
