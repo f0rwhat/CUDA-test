@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
   }
   std::string name = argv[1];
 
-  auto img = readBMP("1.bmp");
+  auto img = readBMP(name);
 
   std::cout << "Img was read, data block size - " << img.data.size() << std::endl;
 
